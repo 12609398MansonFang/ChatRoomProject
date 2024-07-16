@@ -396,3 +396,30 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+
+# Database files
+*.mdf
+*.ldf
+*.ndf
+
+# Entity Framework
+project.lock.json
+project.fragment.lock.json
+
+# ASP.NET Core
+## The directory where runtime stores data when running ASP.NET Core projects
+**/runtime/
+**/config/
+**/system/
+**/tmp/
+
+# Windows image file caches
+Thumbs.db
+ehthumbs.db
+
+# SQL Server files
+*.mdf
+*.ldf
+
+# Resharper files
+_ReSharper*/
