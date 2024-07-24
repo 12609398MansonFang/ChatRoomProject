@@ -1,5 +1,5 @@
 // Message
-export interface Messages {
+export interface Message {
     id: any
     text: any | null
     userId: any | null
@@ -12,8 +12,6 @@ export interface CreateMessage {
     roomId: any | null
 }
 
-
-
 // Notification
 export interface Notification {
     id: any
@@ -23,6 +21,12 @@ export interface Notification {
 }
 
 export interface UpdateNotification {
+    users: any | null
+}
+
+export interface CreateNotification {
+    type: any | null
+    text: any | null
     users: any | null
 }
 

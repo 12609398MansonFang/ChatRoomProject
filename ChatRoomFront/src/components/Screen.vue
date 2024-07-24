@@ -6,8 +6,8 @@ export default defineComponent({ name: 'Screen' })
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import cookies from 'js-cookie'
-import type { User, Notification, Room, UpdateRoom, CreateMessage } from '../type/types'
-import { loginUser, getRooms, updateRoom, createRoom, createMessage, getNotification, updateNotification, getUsers } from '../service/services'
+import type { User, Notification, Room, UpdateRoom, Message, CreateNotification} from '../type/types'
+import { loginUser, getRooms, updateRoom, createRoom, getMessages, createMessage, deleteMessage, getNotification, updateNotification, getUsers, createNotification } from '../service/services'
 
 
 const emailInput = ref('')
@@ -50,37 +50,38 @@ const getUserInRoom = (room: Room) => {
 const handleAddClick = (roomId: number) => {
     if (showAddInterface.value === roomId) {
         showAddInterface.value = null
-        toBeRemoved.value = []
         toBeAdded.value = []
+        toBeRemoved.value = []
     } else {
         showAddInterface.value = roomId
         showRemoveInterface.value = null
-        toBeRemoved.value = []
         toBeAdded.value = []
+        toBeRemoved.value = []
     }
 }
 
 const handleRemoveClick = (roomId: number) => {
     if (showRemoveInterface.value === roomId) {
         showRemoveInterface.value = null
-        toBeRemoved.value = []
         toBeAdded.value = []
+        toBeRemoved.value = []
+
     } else {
         showRemoveInterface.value = roomId;
         showAddInterface.value = null
-        toBeRemoved.value = []
         toBeAdded.value = []
+        toBeRemoved.value = []
     }
 
 }
 
 const handleAddUserToRoom = (userId: number) => {
-    if (toBeCreated.value.includes(userId)) {
-        toBeCreated.value = toBeCreated.value.filter(Id => Id !== userId)
-        console.log(toBeCreated.value)
+    if (toBeAdded.value.includes(userId)) {
+        toBeAdded.value = toBeAdded.value.filter(Id => Id !== userId)
+        console.log(toBeAdded.value)
     } else {
-        toBeCreated.value.push(userId)
-        console.log(toBeCreated.value)
+        toBeAdded.value.push(userId)
+        console.log(toBeAdded.value)
     }
 }
 
@@ -96,6 +97,11 @@ const handleRemoveUserFromRoom = (userId: number) => {
 
 const handleAddSubmit = async (room: Room) => {
     if (userCurrent.value) {
+        let notification: CreateNotification = {
+            type: "Room",
+            text: `You have been added to >>${room.name}<<`,
+            users: toBeAdded.value
+        }
         try {
             const updatedMembers: number[] = []
             updatedMembers.push(...room.users, ...toBeAdded.value)
@@ -107,9 +113,9 @@ const handleAddSubmit = async (room: Room) => {
                 users: updatedMembers,
                 admin: room.admin
             };
-
+            await createNotification(notification)
+            await refreshNotifications()
             await updateRoom(room.id, updatedRoom)
-
             await refreshRooms()
 
         } catch (error) {
@@ -120,6 +126,11 @@ const handleAddSubmit = async (room: Room) => {
 
 const handleRemoveSubmit = async (room: Room) => {
     if (userCurrent.value) {
+        let notification: CreateNotification = {
+            type: "Room",
+            text: `You have been REMOVED from>>${room.name}<<`,
+            users: toBeRemoved.value
+        }
         try {
             const updatedMembers: number[] = room.users.filter((user: any) => user === room.admin || !toBeRemoved.value.includes(user))
             console.log("New Users", updatedMembers)
@@ -130,9 +141,9 @@ const handleRemoveSubmit = async (room: Room) => {
                 users: updatedMembers,
                 admin: room.admin
             };
-
+            await createNotification(notification)
+            await refreshNotifications()
             await updateRoom(room.id, updatedRoom)
-
             await refreshRooms()
 
         } catch (error) {
@@ -164,8 +175,15 @@ const handleCreateRoomSubmit = async () => {
             users: toBeCreated.value,
             admin: userCurrent.value?.id
         }
+        let notification: CreateNotification = {
+            type: "Room",
+            text: `You have been ADDED to room >>${room.name}<<`,
+            users: toBeCreated.value
+        }
         try {
-            createRoom(room)
+            await createRoom(room)
+            await createNotification(notification)
+            await refreshNotifications()
             createRoomNameInput.value = ''
             createRoomDiscInput.value = ''
             toBeCreated.value = []
@@ -185,8 +203,15 @@ const handleCreateRoomSubmit = async () => {
     }
 }
 
-const handleSelectRoom = (RoomId: number) => {
-    rId.value = RoomId
+const handleSelectRoom = async (RoomId: number) => {
+    if (userCurrent.value) {
+        try {
+            rId.value  = RoomId
+            resetMessages()
+        } catch (error) {
+            console.error('Error fetching rooms:', error)
+        }
+    }
 }
 
 const refreshRooms = async () => {
@@ -212,14 +237,51 @@ const refreshRooms = async () => {
 //----------------------------------Messages-------------------------------------//
 const messageInput = ref('')
 
-const handleSendMessage = async () => {
-    if(messageInput.value.trim() !== ''){
-        let message: CreateMessage
-        message = {text: messageInput.value, userId: userCurrent.value?.id, roomId: 1}
-        createMessage(message)
-    } 
-    messageInput.value = ''
+let roomMessages = ref<Message[]>([])
+
+const resetMessages = async () => {
+    if (rId.value) {
+        try {
+            roomMessages.value = (await getMessages(rId.value)).map(message => ({
+                id: message.id,
+                text: message.text,
+                userId: message.userId,
+                roomId: message.roomId
+            }))
+        } catch (error) {
+            console.error('Error fetching messages:', error)
+        }
+    }
 }
+
+const handleSendMessage = async () => {
+    if (messageInput.value.trim() !== '') {
+        let message = {
+            text: messageInput.value,
+            userId: userCurrent.value?.id,
+            roomId: rId.value
+        }
+        try {
+            await createMessage(message)
+            await resetMessages()
+            messageInput.value = ''
+        } catch (error) {
+            console.error('Error sending message:', error)
+        }
+    }
+}
+
+const handleDeleteMessage = async (messageId: number) => {
+    if (userCurrent.value) {
+        try {
+            await deleteMessage(messageId) 
+            await resetMessages()
+        } catch (error) {
+            console.error('Delete Message Error:', error)
+        }
+    }
+}
+
 
 //----------------------------------Notification---------------------------------//
 const notificationCurrent = ref<Notification[]>([])
@@ -292,6 +354,8 @@ const handleNotificationClick = async (id: number) => {
         }
     }
 }
+
+
 
 onMounted(() => {
     const storedUser = cookies.get('user')
@@ -381,7 +445,7 @@ onMounted(async () => {
             </div>
         </div>
 
-        <div class="Body w-full h-full flex flex-col">
+        <div class="Body w-full h-[80%] flex flex-col">
             <div class="w-full h-[10%] flex flex-col justify-center px-10">
                 <h1 class="font-serif font-bold text-2xl">Welcome {{ userCurrent?.id }} - {{ userCurrent?.name }}</h1>
             </div>
@@ -398,8 +462,8 @@ onMounted(async () => {
 
                     <div class="RoomBodyExisting w-full flex flex-col justify-start p-2 flex-grow overflow-y-scroll" v-if="showExistingRooms">
                         <!--Get Rooms -->
-                            <div v-for="room in rooms" :key="room.id">
-                                <button class="w-[100%] px-2 bg-slate-50 hover:bg-slate-100 border-b-2" :class="{'border-sky-500 border-2': rId === room.id}"
+                        <div v-for="room in rooms" :key="room.id">
+                            <button class="w-[100%] px-2 bg-slate-50 hover:bg-slate-100 border-b-2" :class="{'border-sky-500 border-2': rId === room.id}"
                                     v-if="room.users.includes(userCurrent?.id)"
                                     @click="handleSelectRoom(room.id)"
                                     >
@@ -447,13 +511,8 @@ onMounted(async () => {
                                             <p class="flex text-xs font-bold pt-2"> To Add:</p>
                                             <div class="w-full" v-for="user in getUserNotInRoom(room)" :key="user.id">
                                                 <div class=" hover:bg-sky-200">
-                                                    <button class="w-full flex text-xs bg-sky-200"
-                                                        v-if="toBeAdded.includes(user.id)"
-                                                        @click="handleAddUserToRoom(user.id)"> > {{ user.name
-                                                        }}</button>
-                                                    <button class="w-full flex text-xs" v-else
-                                                        @click="handleAddUserToRoom(user.id)"> > {{ user.name
-                                                        }}</button>
+                                                    <button class="w-full flex text-xs bg-sky-200" v-if="toBeAdded.includes(user.id)" @click="handleAddUserToRoom(user.id)"> > {{ user.name}}</button>
+                                                    <button class="w-full flex text-xs" v-else @click="handleAddUserToRoom(user.id)"> > {{ user.name}}</button>
                                                 </div>
                                             </div>
                                             <button
@@ -480,8 +539,8 @@ onMounted(async () => {
                                                 @click="handleRemoveSubmit(room)">Submit</button>
                                         </div>
                                     </div>
-                                </button>
-                            </div>
+                            </button>
+                        </div>
                     </div>
 
                     <div class="RoomBodyCreating w-full h-full flex flex-col justify-start p-2 flex-grow" v-else>
@@ -498,7 +557,7 @@ onMounted(async () => {
                                 <div class="w-full bg-slate-50 flex-grow overflow-y-scroll">
                                     <div v-for="user in userAll.filter(user => user.id !== userCurrent?.id)" :key="user.id">
                                         <div class="hover:bg-sky-200">
-                                            <button class="w-full flex  border-b-2 border-slate-100 bg-sky-200 "
+                                            <button class="w-full flex  border-b-2 border-slate-100 bg-sky-200"
                                                 v-if="toBeCreated.includes(user.id)"
                                                 @click="handleCreateRoomUser(user.id)"> > {{ user.name }}</button>
                                             <button class="w-full flex border-b-2 border-slate-50" v-else
@@ -524,20 +583,47 @@ onMounted(async () => {
                 </div>
 
                 <div class="Messages w-[40%] h-[90%] flex flex-col rounded-2xl bg-slate-100">
-                    <div class="MessagesHeader w-[100%] h-[5%] flex justify-center items-center p-8">
+                    <div class="MessagesHeader w-full h-12 flex justify-center items-center p-4">
                         <h1 class="font-serif font-bold">Messages</h1>
                     </div>
-                    <div class="MessageBody w-[100%] h-[95%] flex flex-col space-y-2 p-2">
-                        <div class="MessageDisplay h-full bg-slate-50">
-                            Display
+                    <div class="MessageBody flex flex-col flex-grow overflow-hidden">
+                        <div class="MessageDisplay flex flex-col flex-grow space-y-2 overflow-y-auto p-2 bg-slate-50">
+                            <div v-for="message in roomMessages" :key="message.id">                   
+                                <div class="flex justify-end space-x-2" v-if="message.userId == userCurrent?.id">
+
+                                    <div class="flex flex-col">
+                                        <div v-for="user in userAll" :key="user.id">
+                                            <p class="text-sm" v-if="user.id === message.userId">{{ user.name }}</p>
+                                            <p class="text-sm" v-else-if="message.userId === null">{{ user.name }}</p>
+                                        </div>                               
+                                        <p class="p-1 bg-green-200">{{ message.text }} - {{ message.userId }}</p>
+                                        <div class="flex justify-end">
+                                            <button class="text-xs hover:text-slate-400" @click="handleDeleteMessage(message.id)">delete</button>
+                                        </div>                                   
+                                    </div>
+
+                                </div>
+
+                                <div class="flex justify-start" v-else>
+
+                                    <div class="flex flex-col">
+                                        <div class="flex justify-end" v-for="user in userAll" :key="user.id">
+                                            <p class="text-sm" v-if="user.id === message.userId">{{ user.name }}</p>
+                                            <p class="text-sm" v-else-if="message.userId === null">{{ user.name }}</p>
+                                        </div>
+                                        <p class="p-1 bg-red-200">{{ message.text }} - {{ message.userId }}</p>                          
+                                    </div>
+
+                                </div>
+                            </div>
                         </div>
-                        <div class="MessageInput h-[10%] flex item-center space-x-2 p-2 bg-slate-200">
+                        <div class="MessageInput h-[12%] flex items-center space-x-2 p-2">
                             <input class="w-[80%] px-2" v-model="messageInput" placeholder="Type Something......." :disabled="rId === 0">
-                            <button class="w-[20%] px-2 bg-slate-100 hover:text-slate-400 disabled:text-slate-400" :disabled="rId === 0" @click="handleSendMessage">Send</button>
+                            <button class="w-[20%] px-2 hover:text-slate-400 disabled:text-slate-400" :disabled="rId === 0" @click="handleSendMessage">Send</button>
                         </div>
-                        
                     </div>
                 </div>
+
 
                 <div class="Notification w-[25%] h-[90%] rounded-2xl bg-slate-100">
                     <div class="NotificationHeader w-[100%] h-[5%] flex justify-center items-center p-8">

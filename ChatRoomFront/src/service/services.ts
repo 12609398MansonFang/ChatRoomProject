@@ -1,10 +1,10 @@
 import axios from "axios"
-import type { LoginRequest, UserAll, Room, CreateMessage, Notification, UpdateRoom} from "../type/types"
+import type { LoginRequest, UserAll, Room, Message, CreateMessage, Notification, CreateNotification, UpdateRoom} from "../type/types"
 
 const API_URL = 'http://ec2-3-106-121-130.ap-southeast-2.compute.amazonaws.com'
 
 //---------------------------------------Message------------------------------------------//
-export async function getMessage(Id: number): Promise<any> {
+export async function getMessages(Id: number): Promise<Message[]> {
     const response = await axios.get(`${API_URL}/message/${Id}`)
     return response.data;
 }
@@ -14,9 +14,19 @@ export async function createMessage(createMessage: CreateMessage): Promise<any> 
     return response.data    
 }
 
+export async function deleteMessage(Id: number): Promise<any> {
+    const response = await axios.delete(`${API_URL}/message/${Id}`)
+    return response.data    
+}
+
 //---------------------------------------Notification------------------------------------------//
 export async function getNotification(Id: number): Promise<Notification[]> {
     const response = await axios.get<Notification[]>(`${API_URL}/notification/${Id}`);
+    return response.data;
+}
+
+export async function createNotification(createNotification: CreateNotification): Promise<any> {
+    const response = await axios.post(`${API_URL}/notification`, createNotification);
     return response.data;
 }
 
