@@ -1,10 +1,18 @@
 // Message
 export interface Messages {
-    Id: any
-    Text: any | null
-    UserId: any | null
-    RoomId: any | null
+    id: any
+    text: any | null
+    userId: any | null
+    roomId: any | null
 }
+
+export interface CreateMessage {
+    text: any | null
+    userId: any | null
+    roomId: any | null
+}
+
+
 
 // Notification
 export interface Notification {
@@ -21,6 +29,13 @@ export interface UpdateNotification {
 // Room 
 export interface Room {
     id: any
+    name: any | null
+    description: any | null
+    users: any | null
+    admin: any | null
+}
+
+export interface UpdateRoom {
     name: any | null
     description: any | null
     users: any | null

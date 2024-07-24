@@ -1,9 +1,18 @@
 import axios from "axios"
-import type { LoginRequest, UserAll, Room, Notification} from "../type/types"
+import type { LoginRequest, UserAll, Room, CreateMessage, Notification, UpdateRoom} from "../type/types"
 
 const API_URL = 'http://ec2-3-106-121-130.ap-southeast-2.compute.amazonaws.com'
 
 //---------------------------------------Message------------------------------------------//
+export async function getMessage(Id: number): Promise<any> {
+    const response = await axios.get(`${API_URL}/message/${Id}`)
+    return response.data;
+}
+
+export async function createMessage(createMessage: CreateMessage): Promise<any> {
+    const response = await axios.post(`${API_URL}/message`, createMessage)
+    return response.data    
+}
 
 //---------------------------------------Notification------------------------------------------//
 export async function getNotification(Id: number): Promise<Notification[]> {
@@ -22,7 +31,15 @@ export async function getRooms(Id: number): Promise<Room[]> {
     return response.data;
 }
 
+export async function updateRoom(Id: number, updateRoom: UpdateRoom): Promise<any> {
+    const response = await axios.put(`${API_URL}/room/${Id}`, updateRoom)
+    return response.data
+}
 
+export async function createRoom(createRoom: UpdateRoom): Promise<any> {
+    const response = await axios.post(`${API_URL}/room`, createRoom)
+    return response.data    
+}
 
 //---------------------------------------User------------------------------------------//
 // - Login using Email and Password

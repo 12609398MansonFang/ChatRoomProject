@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace ChatRoom.Data.Migrations
 {
     [DbContext(typeof(ChatRoomContext))]
-    [Migration("20240722010619_SeedMessages")]
+    [Migration("20240724013234_SeedMessages")]
     partial class SeedMessages
     {
         /// <inheritdoc />
